@@ -433,6 +433,11 @@ input[type='text']:focus {
   font-size: 14px;
 }
 
+.history-slot {
+  text-transform: capitalize;
+  color: var(--primary-hover);
+}
+
 .history-meta {
   font-size: 12px;
   color: var(--muted);

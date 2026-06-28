@@ -1,11 +1,32 @@
-import { WEATHER_OPTIONS } from '../ml/encoding';
+import { WEATHER_OPTIONS, MEAL_TIMES } from '../ml/encoding';
 
 const WEATHER_LABELS = { hot: '🔥 Hot', mild: '⛅ Mild', cold: '❄️ Cold' };
+const MEAL_TIME_LABELS = {
+  breakfast: '🌅 Breakfast',
+  lunch: '🥪 Lunch',
+  dinner: '🌙 Dinner',
+};
 
-// Pre-prediction questions: weather and whether today is a special occasion.
+// Pre-prediction questions: which meal, weather, and special occasion.
 export default function Questionnaire({ answers, onChange, disabled }) {
   return (
     <div className="questionnaire">
+      <fieldset disabled={disabled}>
+        <legend>Which meal are you planning?</legend>
+        <div className="choice-row">
+          {MEAL_TIMES.map((t) => (
+            <button
+              key={t}
+              type="button"
+              className={`chip ${answers.mealTime === t ? 'chip--active' : ''}`}
+              onClick={() => onChange({ ...answers, mealTime: t })}
+            >
+              {MEAL_TIME_LABELS[t]}
+            </button>
+          ))}
+        </div>
+      </fieldset>
+
       <fieldset disabled={disabled}>
         <legend>Has the weather been hot, mild, or cold?</legend>
         <div className="choice-row">

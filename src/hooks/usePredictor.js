@@ -87,22 +87,24 @@ export function usePredictor(meals) {
     [vocab],
   );
 
-  // Returns { predictions, source }. Uses the model when available, otherwise a
-  // popularity-based cold-start ranking.
+  // Returns { predictions, source } for the current slot (currentRecord carries
+  // the chosen mealTime, so its cyclical time-of-day feature drives a meal-time-
+  // specific prediction). Uses the model when available, else a popularity-based
+  // cold-start ranking.
   const getPredictions = useCallback(
-    async (history, currentDay, topK = 10) => {
+    async (history, currentRecord, topK = 10) => {
       if (modelRef.current) {
         const predictions = await predictWithModel(
           modelRef.current,
           history,
-          currentDay,
+          currentRecord,
           vocab,
           topK,
         );
         return { predictions, source: 'model' };
       }
       return {
-        predictions: popularityRanking(history, currentDay, vocab, topK),
+        predictions: popularityRanking(history, currentRecord, vocab, topK),
         source: 'fallback',
       };
     },

@@ -15,7 +15,7 @@ const TABS = [
 export default function App() {
   const [tab, setTab] = useState('predict');
   const { meals, loading: mealsLoading, addMeal, removeMeal } = useMeals();
-  const { history, loading: historyLoading, recordDay, deleteDay } = useHistory();
+  const { history, loading: historyLoading, recordSlot, recordMany, deleteSlot } = useHistory();
   const predictor = usePredictor(meals);
 
   const loading = mealsLoading || historyLoading;
@@ -41,7 +41,7 @@ export default function App() {
                 meals={meals}
                 history={history}
                 predictor={predictor}
-                recordDay={recordDay}
+                recordSlot={recordSlot}
                 addMeal={addMeal}
               />
             )}
@@ -50,8 +50,8 @@ export default function App() {
                 meals={meals}
                 history={history}
                 predictor={predictor}
-                recordDay={recordDay}
-                deleteDay={deleteDay}
+                recordMany={recordMany}
+                deleteSlot={deleteSlot}
               />
             )}
             {tab === 'meals' && (

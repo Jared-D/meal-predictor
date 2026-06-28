@@ -1,5 +1,6 @@
 import localforage from 'localforage';
 import { PRESET_MEALS } from '../data/presetMeals';
+import { compareRecords } from '../ml/encoding';
 
 // Three IndexedDB-backed stores under one database.
 const mealStore = localforage.createInstance({ name: 'meal-predictor', storeName: 'meals' });
@@ -48,44 +49,65 @@ export async function removeMeal(id) {
 }
 
 /* ---------------------------- History ---------------------------- */
-// Each day is stored under its ISO date key, e.g. '2026-06-28':
-//   { date, weather, specialOccasion, meals: [mealId, ...] }
+// History is granular per (date, mealTime). Each slot is stored under a
+// composite key 'YYYY-MM-DD__mealTime', e.g. '2026-06-28__dinner':
+//   { date, mealTime, weather, specialOccasion, meals: [mealId, ...] }
 
-export async function getDay(date) {
-  return (await historyStore.getItem(date)) || null;
+const slotKey = (date, mealTime) => `${date}__${mealTime}`;
+
+export async function getSlot(date, mealTime) {
+  return (await historyStore.getItem(slotKey(date, mealTime))) || null;
 }
 
-export async function saveDay(day) {
-  if (!day || !day.date) throw new Error('Day record must include a date');
-  await historyStore.setItem(day.date, day);
-  return day;
+export async function saveSlot(record) {
+  if (!record || !record.date || !record.mealTime) {
+    throw new Error('Record must include a date and mealTime');
+  }
+  await historyStore.setItem(slotKey(record.date, record.mealTime), record);
+  return record;
 }
 
-// Records (merges) the chosen meals + questionnaire answers for a date.
-export async function recordDay({ date, weather, specialOccasion, meals }) {
-  const existing = (await getDay(date)) || { date, meals: [] };
-  const mergedMeals = Array.from(new Set([...(existing.meals || []), ...(meals || [])]));
-  const day = {
+// Builds a merged slot record (merging meals with any existing entry).
+function mergeSlot(existing, { date, mealTime, weather, specialOccasion, meals }) {
+  const base = existing || { date, mealTime, meals: [] };
+  const mergedMeals = Array.from(new Set([...(base.meals || []), ...(meals || [])]));
+  return {
     date,
-    weather: weather ?? existing.weather ?? 'mild',
-    specialOccasion: specialOccasion ?? existing.specialOccasion ?? false,
+    mealTime,
+    weather: weather ?? base.weather ?? 'mild',
+    specialOccasion: specialOccasion ?? base.specialOccasion ?? false,
     meals: mergedMeals,
   };
-  return saveDay(day);
 }
 
-export async function deleteDay(date) {
-  await historyStore.removeItem(date);
+// Records (merges) the chosen meals + questionnaire answers for one slot.
+export async function recordSlot(entry) {
+  const existing = await getSlot(entry.date, entry.mealTime);
+  return saveSlot(mergeSlot(existing, entry));
 }
 
-// All recorded days, sorted ascending by date.
+// Writes many slot records at once (used for seeding demo history) and returns
+// the refreshed history. Each entry is merged with any existing slot.
+export async function recordManySlots(entries) {
+  for (const entry of entries) {
+    const existing = await getSlot(entry.date, entry.mealTime);
+    await saveSlot(mergeSlot(existing, entry));
+  }
+  return getHistory();
+}
+
+export async function deleteSlot(date, mealTime) {
+  await historyStore.removeItem(slotKey(date, mealTime));
+}
+
+// All recorded slots, sorted ascending by date then breakfast < lunch < dinner.
 export async function getHistory() {
-  const days = [];
+  const records = [];
   await historyStore.iterate((value) => {
-    if (value && value.date) days.push(value);
+    if (value && value.date && value.mealTime) records.push(value);
   });
-  days.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
-  return days;
+  records.sort(compareRecords);
+  return records;
 }
 
 /* ----------------------------- Meta ------------------------------ */

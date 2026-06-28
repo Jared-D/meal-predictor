@@ -1,17 +1,18 @@
 import { useState } from 'react';
 import { formatDate } from '../utils/date';
-import { WEATHER_OPTIONS } from '../ml/encoding';
+import { WEATHER_OPTIONS, MEAL_TIMES } from '../ml/encoding';
 
 const WEATHER_ICON = { hot: '🔥', mild: '⛅', cold: '❄️' };
+const MEAL_TIME_ICON = { breakfast: '🌅', lunch: '🥪', dinner: '🌙' };
 
-// History list plus the model-training controls (training is driven by history).
-export default function HistoryView({ meals, history, predictor, recordDay, deleteDay }) {
+// History list (per date + meal time) plus the model-training controls.
+export default function HistoryView({ meals, history, predictor, recordMany, deleteSlot }) {
   const [training, setTraining] = useState(false);
   const [seeding, setSeeding] = useState(false);
   const [message, setMessage] = useState(null);
 
   const mealName = (id) => meals.find((m) => m.id === id)?.name || `#${id}`;
-  const daysWithMeals = history.filter((d) => d.meals && d.meals.length > 0).length;
+  const slotsWithMeals = history.filter((d) => d.meals && d.meals.length > 0).length;
 
   const handleTrain = async () => {
     setTraining(true);
@@ -20,7 +21,7 @@ export default function HistoryView({ meals, history, predictor, recordDay, dele
       const result = await predictor.train(history);
       setMessage(
         result.trained
-          ? `Model trained on ${result.samples} day${result.samples === 1 ? '' : 's'} of history.`
+          ? `Model trained on ${result.samples} meal slot${result.samples === 1 ? '' : 's'} of history.`
           : 'Not enough history yet — log some meals first.',
       );
     } catch (err) {
@@ -30,9 +31,9 @@ export default function HistoryView({ meals, history, predictor, recordDay, dele
     }
   };
 
-  // Generates ~120 days of plausible history so the model has something to learn
-  // from in a demo. Patterns: cold -> soups/curry, hot -> salads/sushi,
-  // special occasions -> pizza/sushi/roast.
+  // Generates ~120 days × 3 slots of plausible history so the model has something
+  // to learn from. Each meal time has its own characteristic foods, and dinner
+  // additionally varies with weather / special occasions.
   const handleSeed = async () => {
     if (meals.length === 0) return;
     setSeeding(true);
@@ -43,20 +44,35 @@ export default function HistoryView({ meals, history, predictor, recordDay, dele
         const list = pool.length ? pool : meals;
         return list[Math.floor(Math.random() * list.length)].id;
       };
+      const mealForSlot = (mealTime, weather, special) => {
+        if (mealTime === 'breakfast') return pick(['Pancakes', 'Oatmeal', 'Bacon']);
+        if (mealTime === 'lunch') return pick(['Salad', 'Burrito', 'Mac', 'Soup']);
+        // dinner
+        if (special) return pick(['Pizza', 'Sushi', 'Roast', 'Lasagna']);
+        if (weather === 'cold') return pick(['Curry', 'Soup', 'Roast']);
+        if (weather === 'hot') return pick(['Sushi', 'Tacos', 'Salad']);
+        return pick(['Spaghetti', 'Chicken', 'Burger', 'Stir Fry']);
+      };
+
+      const entries = [];
       for (let i = 120; i >= 1; i--) {
         const d = new Date();
         d.setDate(d.getDate() - i);
         const date = d.toISOString().slice(0, 10);
-        const weather = WEATHER_OPTIONS[Math.floor(Math.random() * 3)];
+        const weather = WEATHER_OPTIONS[Math.floor(Math.random() * WEATHER_OPTIONS.length)];
         const specialOccasion = Math.random() < 0.1;
-        let mealId;
-        if (specialOccasion) mealId = pick(['Pizza', 'Sushi', 'Roast', 'Lasagna']);
-        else if (weather === 'cold') mealId = pick(['Soup', 'Curry', 'Oatmeal', 'Mac']);
-        else if (weather === 'hot') mealId = pick(['Salad', 'Sushi', 'Tacos']);
-        else mealId = pick(['Spaghetti', 'Chicken', 'Burger', 'Stir Fry']);
-        await recordDay({ date, weather, specialOccasion, meals: [mealId] });
+        for (const mealTime of MEAL_TIMES) {
+          entries.push({
+            date,
+            mealTime,
+            weather,
+            specialOccasion,
+            meals: [mealForSlot(mealTime, weather, specialOccasion)],
+          });
+        }
       }
-      setMessage('Generated 120 days of sample history. Now train the model.');
+      await recordMany(entries);
+      setMessage(`Generated ${entries.length} meal slots of sample history. Now train the model.`);
     } catch (err) {
       setMessage(err.message || 'Could not seed history');
     } finally {
@@ -71,7 +87,8 @@ export default function HistoryView({ meals, history, predictor, recordDay, dele
       <div className="panel-head">
         <h1>History &amp; training</h1>
         <p className="muted">
-          {history.length} day{history.length === 1 ? '' : 's'} recorded · {daysWithMeals} with meals
+          {history.length} meal slot{history.length === 1 ? '' : 's'} recorded · {slotsWithMeals}{' '}
+          with meals
         </p>
       </div>
 
@@ -113,7 +130,7 @@ export default function HistoryView({ meals, history, predictor, recordDay, dele
             type="button"
             className="btn btn--primary"
             onClick={handleTrain}
-            disabled={training || daysWithMeals === 0}
+            disabled={training || slotsWithMeals === 0}
           >
             {training ? 'Training…' : 'Train / update model'}
           </button>
@@ -131,28 +148,33 @@ export default function HistoryView({ meals, history, predictor, recordDay, dele
       </div>
 
       <ul className="history-list">
-        {[...history].reverse().map((day) => (
-          <li key={day.date} className="history-item">
+        {[...history].reverse().map((record) => (
+          <li key={`${record.date}__${record.mealTime}`} className="history-item">
             <div className="history-main">
-              <span className="history-date">{formatDate(day.date)}</span>
+              <span className="history-date">
+                {MEAL_TIME_ICON[record.mealTime]} {formatDate(record.date)} ·{' '}
+                <span className="history-slot">{record.mealTime}</span>
+              </span>
               <span className="history-meta">
-                {WEATHER_ICON[day.weather] || ''} {day.weather}
-                {day.specialOccasion ? ' · 🎉 special' : ''}
+                {WEATHER_ICON[record.weather] || ''} {record.weather}
+                {record.specialOccasion ? ' · 🎉 special' : ''}
               </span>
               <span className="history-meals">
-                {day.meals && day.meals.length ? day.meals.map(mealName).join(', ') : '—'}
+                {record.meals && record.meals.length ? record.meals.map(mealName).join(', ') : '—'}
               </span>
             </div>
             <button
               type="button"
               className="btn btn--danger btn--small"
-              onClick={() => deleteDay(day.date)}
+              onClick={() => deleteSlot(record.date, record.mealTime)}
             >
               Delete
             </button>
           </li>
         ))}
-        {history.length === 0 && <li className="muted">No history yet. Log a meal to get started.</li>}
+        {history.length === 0 && (
+          <li className="muted">No history yet. Log a meal to get started.</li>
+        )}
       </ul>
     </section>
   );

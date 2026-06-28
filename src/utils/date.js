@@ -14,3 +14,12 @@ export function formatDate(iso) {
     day: 'numeric',
   });
 }
+
+// Best guess of the current meal time from the device clock.
+// before 11:00 -> breakfast, 11:00–15:59 -> lunch, otherwise dinner.
+export function defaultMealTime() {
+  const h = new Date().getHours();
+  if (h < 11) return 'breakfast';
+  if (h < 16) return 'lunch';
+  return 'dinner';
+}

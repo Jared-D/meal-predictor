@@ -5,6 +5,7 @@ import { useState } from 'react';
 export default function PredictionResults({
   predictions,
   source,
+  mealTime,
   selected,
   onToggle,
   onConfirm,
@@ -26,7 +27,9 @@ export default function PredictionResults({
   return (
     <div className="results">
       <div className="results-header">
-        <h2>Top {predictions.length} predictions</h2>
+        <h2>
+          Top {predictions.length} {mealTime} predictions
+        </h2>
         <span className={`badge badge--${source === 'model' ? 'model' : 'fallback'}`}>
           {source === 'model' ? 'TensorFlow model' : 'Popularity (cold start)'}
         </span>

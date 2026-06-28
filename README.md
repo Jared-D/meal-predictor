@@ -29,13 +29,14 @@ npm run preview  # serve the production build locally
 
 ## How to use it
 
-1. **Predict tab** — answer the two questions (weather, special occasion?) and
-   tap **Get my top 10 predictions**. Select one or more meals you'll have, or
-   type a meal of your own (it's added to your database). Confirm to log it to
-   today's history.
-2. **History tab** — see every recorded day. Use **Train / update model** to
-   (re)train on your history. Use **Generate sample history** to create ~120
-   days of demo data so you can see the model in action immediately.
+1. **Predict tab** — choose the meal (breakfast/lunch/dinner) and answer the
+   questions (weather, special occasion?), then tap **Get my top 10
+   predictions**. Select one or more meals you'll have, or type a meal of your
+   own (it's added to your database). Confirm to log it to that slot of today's
+   history.
+2. **History tab** — see every recorded slot. Use **Train / update model** to
+   (re)train on your history. Use **Generate sample history** to create ~120 days
+   × 3 slots of demo data so you can see the model in action immediately.
 3. **Meals tab** — add or remove meals from your database.
 
 > First runs use a **popularity-based cold-start** ranking (badge: *Popularity*).
@@ -49,40 +50,49 @@ Data format for a meal:
 { "id": 1, "name": "Spaghetti" }
 ```
 
-Each recorded day:
+History is **granular per meal slot**: breakfast, lunch and dinner are stored as
+separate records for each date. The date comes from the device; you pick the
+meal time in the questionnaire. Each recorded slot:
 
 ```json
-{ "date": "2026-06-28", "weather": "mild", "specialOccasion": false, "meals": [1, 3] }
+{ "date": "2026-06-28", "mealTime": "dinner", "weather": "mild", "specialOccasion": false, "meals": [1, 3] }
 ```
 
 ### Encoding (`src/ml/encoding.js`)
 
-Every day is one-hot encoded into a feature vector:
+Every slot is encoded into a feature vector:
 
 ```
-[ weather(3: hot/mild/cold) | specialOccasion(2) | meals(M one-hot) ]
+[ weather(3: hot/mild/cold) | specialOccasion(2) | timeOfDay(2: sin,cos) | meals(M one-hot) ]
 ```
 
-A model input is a **sequence of the past 365 days** (`SEQUENCE_LENGTH`),
-**including the current session day**. The current day's questionnaire answers
-are included but its meal slots are masked (zeroed) — that's what we predict.
-Shorter histories are front-padded with zero vectors.
+The **time of day** is a **cyclical encoding** — `sin`/`cos` of the slot's hour
+(breakfast → 07:00, lunch → 12:00, dinner → 19:00) — so the three meal times are
+continuous rather than arbitrary categories. A **single** model handles all meal
+times; because the chosen meal time changes this feature, breakfast / lunch /
+dinner each produce their own predictions.
+
+A model input is a **sequence of the past 365 days × 3 slots**
+(`SEQUENCE_LENGTH = 1095`), **including the current session slot**. The current
+slot's questionnaire answers (incl. time of day) are included but its meal slots
+are masked (zeroed) — that's what we predict. Shorter histories are front-padded
+with zero vectors.
 
 ### Model (`src/ml/model.js`)
 
 ```
 Masking(0)  →  LSTM(48)  →  Dropout(0.2)  →  Dense(relu)  →  Dense(M, softmax)
-input: [365, 5 + M]                                          output: P(meal)
+input: [1095, 7 + M]                                        output: P(meal)
 ```
 
-- The **Masking** layer ignores the zero-padded leading days.
-- The **LSTM** learns temporal patterns across the year.
+- The **Masking** layer ignores the zero-padded leading slots.
+- The **LSTM** learns temporal patterns across slots and across the year.
 - The **softmax** head yields a probability per meal; the UI shows the **top 10**.
-- Days with multiple chosen meals become a normalised multi-hot target, spreading
-  probability across the selected meals.
+- Slots with multiple chosen meals become a normalised multi-hot target,
+  spreading probability across the selected meals.
 
-Training builds one `(sequence → distribution)` sample per historical day that
-has meals, with that day's meal masked in the input. The trained model is saved
+Training builds one `(sequence → distribution)` sample per historical slot that
+has meals, with that slot's meal masked in the input. The trained model is saved
 to IndexedDB (`indexeddb://meal-predictor-model`).
 
 ### Vocabulary changes

@@ -1,12 +1,18 @@
 import { useMemo, useState } from 'react';
 import Questionnaire from './Questionnaire';
 import PredictionResults from './PredictionResults';
-import { todayISO, formatDate } from '../utils/date';
+import { todayISO, formatDate, defaultMealTime } from '../utils/date';
 
-// Drives the daily prediction flow: questionnaire -> predictions -> selection.
-export default function PredictPanel({ meals, history, predictor, recordDay, addMeal }) {
+const MEAL_TIME_LABELS = { breakfast: 'breakfast', lunch: 'lunch', dinner: 'dinner' };
+
+// Drives the per-slot prediction flow: questionnaire -> predictions -> selection.
+export default function PredictPanel({ meals, history, predictor, recordSlot, addMeal }) {
   const today = todayISO();
-  const [answers, setAnswers] = useState({ weather: 'mild', specialOccasion: false });
+  const [answers, setAnswers] = useState({
+    mealTime: defaultMealTime(),
+    weather: 'mild',
+    specialOccasion: false,
+  });
   const [predictions, setPredictions] = useState(null);
   const [source, setSource] = useState(null);
   const [selected, setSelected] = useState([]);
@@ -20,17 +26,18 @@ export default function PredictPanel({ meals, history, predictor, recordDay, add
     return (id) => map.get(id) || `#${id}`;
   }, [meals]);
 
-  const alreadyToday = history.find((d) => d.date === today);
+  // What's already logged for the exact slot being planned.
+  const slotEntry = history.find((d) => d.date === today && d.mealTime === answers.mealTime);
 
   const handlePredict = async () => {
     setBusy(true);
     setError(null);
     setSaved(false);
     try {
-      const currentDay = { date: today, ...answers, meals: [] };
+      const currentRecord = { date: today, ...answers, meals: [] };
       const { predictions: preds, source: src } = await predictor.getPredictions(
         history,
-        currentDay,
+        currentRecord,
         10,
       );
       setPredictions(preds);
@@ -50,7 +57,6 @@ export default function PredictPanel({ meals, history, predictor, recordDay, add
     setError(null);
     try {
       const { meal } = await addMeal(name);
-      // Surface the custom meal at the top of the list and pre-select it.
       setPredictions((cur) => {
         const without = (cur || []).filter((p) => p.id !== meal.id);
         return [{ id: meal.id, name: meal.name, score: 0 }, ...without];
@@ -66,8 +72,9 @@ export default function PredictPanel({ meals, history, predictor, recordDay, add
     setSaving(true);
     setError(null);
     try {
-      await recordDay({
+      await recordSlot({
         date: today,
+        mealTime: answers.mealTime,
         weather: answers.weather,
         specialOccasion: answers.specialOccasion,
         meals: selected,
@@ -89,17 +96,26 @@ export default function PredictPanel({ meals, history, predictor, recordDay, add
         <p className="muted">{formatDate(today)}</p>
       </div>
 
-      {alreadyToday && alreadyToday.meals.length > 0 && (
+      {slotEntry && slotEntry.meals.length > 0 && (
         <div className="note">
-          Already logged today: {alreadyToday.meals.map(mealName).join(', ')}. New picks will be
-          added.
+          Already logged for {MEAL_TIME_LABELS[answers.mealTime]} today:{' '}
+          {slotEntry.meals.map(mealName).join(', ')}. New picks will be added to this slot.
         </div>
       )}
 
       <Questionnaire answers={answers} onChange={setAnswers} disabled={busy} />
 
-      <button type="button" className="btn btn--primary btn--block" onClick={handlePredict} disabled={busy}>
-        {busy ? 'Predicting…' : predictions ? 'Re-run prediction' : 'Get my top 10 predictions'}
+      <button
+        type="button"
+        className="btn btn--primary btn--block"
+        onClick={handlePredict}
+        disabled={busy}
+      >
+        {busy
+          ? 'Predicting…'
+          : predictions
+            ? 'Re-run prediction'
+            : `Get my top 10 ${MEAL_TIME_LABELS[answers.mealTime]} predictions`}
       </button>
 
       {error && <div className="error">{error}</div>}
@@ -109,6 +125,7 @@ export default function PredictPanel({ meals, history, predictor, recordDay, add
         <PredictionResults
           predictions={predictions}
           source={source}
+          mealTime={answers.mealTime}
           selected={selected}
           onToggle={toggle}
           onConfirm={handleConfirm}

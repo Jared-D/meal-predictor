@@ -1,22 +1,22 @@
 import { useCallback, useEffect, useState } from 'react';
 import * as storage from '../db/storage';
 
-// Loads and manages the day-by-day meal history.
+// Loads and manages the per-slot (date + meal time) meal history.
 export function useHistory() {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    const days = await storage.getHistory();
-    setHistory(days);
-    return days;
+    const records = await storage.getHistory();
+    setHistory(records);
+    return records;
   }, []);
 
   useEffect(() => {
     let active = true;
-    storage.getHistory().then((days) => {
+    storage.getHistory().then((records) => {
       if (active) {
-        setHistory(days);
+        setHistory(records);
         setLoading(false);
       }
     });
@@ -25,22 +25,32 @@ export function useHistory() {
     };
   }, []);
 
-  // Merges chosen meals + answers into the given date's record.
-  const recordDay = useCallback(
+  // Merges chosen meals + answers into one (date, mealTime) slot.
+  const recordSlot = useCallback(
     async (entry) => {
-      await storage.recordDay(entry);
+      await storage.recordSlot(entry);
       return refresh();
     },
     [refresh],
   );
 
-  const deleteDay = useCallback(
-    async (date) => {
-      await storage.deleteDay(date);
+  // Bulk write (seeding) with a single refresh at the end.
+  const recordMany = useCallback(
+    async (entries) => {
+      const records = await storage.recordManySlots(entries);
+      setHistory(records);
+      return records;
+    },
+    [],
+  );
+
+  const deleteSlot = useCallback(
+    async (date, mealTime) => {
+      await storage.deleteSlot(date, mealTime);
       return refresh();
     },
     [refresh],
   );
 
-  return { history, loading, recordDay, deleteDay, refresh };
+  return { history, loading, recordSlot, recordMany, deleteSlot, refresh };
 }

@@ -3,9 +3,9 @@ import { SEQUENCE_LENGTH, featuresPerDay, buildSequence, buildTrainingData } fro
 
 const MODEL_KEY = 'indexeddb://meal-predictor-model';
 
-// Builds a recurrent model over the 365-day sequence. The Masking layer skips
-// the zero-padded leading days, the LSTM summarises the temporal pattern, and a
-// softmax head produces a probability for every meal in the vocabulary.
+// Builds a recurrent model over the meal-slot sequence (365 days × 3 slots). The
+// Masking layer skips the zero-padded leading slots, the LSTM summarises the
+// temporal pattern, and a softmax head produces a probability for every meal.
 export function buildModel(fpd, numMeals) {
   const model = tf.sequential();
   model.add(tf.layers.masking({ maskValue: 0, inputShape: [SEQUENCE_LENGTH, fpd] }));
@@ -51,14 +51,17 @@ export async function trainModel(history, vocab, { epochs = 40, onEpoch } = {}) 
   }
 }
 
-// Loads a persisted model, but only if its output size still matches the current
-// meal vocabulary (adding/removing meals invalidates the old model).
+// Loads a persisted model, but only if its input/output shape still matches the
+// current vocabulary and feature layout (adding/removing meals — or a change to
+// the encoding — invalidates the old model).
 export async function loadModel(vocab) {
   try {
     const model = await tf.loadLayersModel(MODEL_KEY);
     const outShape = model.outputs[0].shape;
     const outUnits = outShape[outShape.length - 1];
-    if (outUnits !== vocab.size) {
+    const inShape = model.inputs[0].shape; // [null, SEQUENCE_LENGTH, fpd]
+    const okInput = inShape[1] === SEQUENCE_LENGTH && inShape[2] === featuresPerDay(vocab);
+    if (outUnits !== vocab.size || !okInput) {
       model.dispose();
       return null;
     }
@@ -68,9 +71,9 @@ export async function loadModel(vocab) {
   }
 }
 
-// Runs the model for the current day and returns the topK ranked meals.
-export async function predictWithModel(model, history, currentDay, vocab, topK = 10) {
-  const seq = buildSequence(history, currentDay, vocab);
+// Runs the model for the current slot and returns the topK ranked meals.
+export async function predictWithModel(model, history, currentRecord, vocab, topK = 10) {
+  const seq = buildSequence(history, currentRecord, vocab);
   const input = tf.tensor3d([seq]);
   let probs;
   try {
@@ -85,15 +88,18 @@ export async function predictWithModel(model, history, currentDay, vocab, topK =
 
 // Cold-start / fallback ranking used when there is no trained model yet. Scores
 // meals by frequency, with a boost for meals previously eaten under matching
-// conditions (same weather / special-occasion flag).
-export function popularityRanking(history, currentDay, vocab, topK = 10) {
+// conditions (same meal time / weather / special-occasion flag). The meal-time
+// match keeps cold-start predictions distinct per breakfast / lunch / dinner.
+export function popularityRanking(history, currentRecord, vocab, topK = 10) {
   const total = new Map();
   const conditional = new Map();
-  for (const day of history) {
-    const weatherMatch = day.weather === currentDay.weather;
-    const occasionMatch = !!day.specialOccasion === !!currentDay.specialOccasion;
-    for (const id of day.meals || []) {
+  for (const record of history) {
+    const timeMatch = record.mealTime === currentRecord.mealTime;
+    const weatherMatch = record.weather === currentRecord.weather;
+    const occasionMatch = !!record.specialOccasion === !!currentRecord.specialOccasion;
+    for (const id of record.meals || []) {
       total.set(id, (total.get(id) || 0) + 1);
+      if (timeMatch) conditional.set(id, (conditional.get(id) || 0) + 2);
       if (weatherMatch) conditional.set(id, (conditional.get(id) || 0) + 1);
       if (occasionMatch) conditional.set(id, (conditional.get(id) || 0) + 1);
     }
