@@ -411,6 +411,65 @@ input[type='text']:focus {
   font-weight: 600;
 }
 
+/* -------------------------- Add past meal ------------------------- */
+.add-history {
+  margin: 16px 0;
+}
+
+.add-history--open {
+  padding: 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.add-history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.field-label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+input[type='date'] {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 11px 12px;
+  color: var(--text);
+  font-size: 15px;
+}
+
+input[type='date']:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.meal-select {
+  flex: 1;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 11px 12px;
+  color: var(--text);
+  font-size: 15px;
+}
+
+.meal-select:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
 /* ----------------------------- History ---------------------------- */
 .history-item {
   display: flex;

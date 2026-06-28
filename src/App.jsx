@@ -50,8 +50,10 @@ export default function App() {
                 meals={meals}
                 history={history}
                 predictor={predictor}
+                recordSlot={recordSlot}
                 recordMany={recordMany}
                 deleteSlot={deleteSlot}
+                addMeal={addMeal}
               />
             )}
             {tab === 'meals' && (

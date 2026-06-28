@@ -1,12 +1,21 @@
 import { useState } from 'react';
 import { formatDate } from '../utils/date';
 import { WEATHER_OPTIONS, MEAL_TIMES } from '../ml/encoding';
+import AddHistoryEntry from './AddHistoryEntry';
 
 const WEATHER_ICON = { hot: '🔥', mild: '⛅', cold: '❄️' };
 const MEAL_TIME_ICON = { breakfast: '🌅', lunch: '🥪', dinner: '🌙' };
 
 // History list (per date + meal time) plus the model-training controls.
-export default function HistoryView({ meals, history, predictor, recordMany, deleteSlot }) {
+export default function HistoryView({
+  meals,
+  history,
+  predictor,
+  recordSlot,
+  recordMany,
+  deleteSlot,
+  addMeal,
+}) {
   const [training, setTraining] = useState(false);
   const [seeding, setSeeding] = useState(false);
   const [message, setMessage] = useState(null);
@@ -146,6 +155,8 @@ export default function HistoryView({ meals, history, predictor, recordMany, del
         </div>
         {message && <div className="note">{message}</div>}
       </div>
+
+      <AddHistoryEntry meals={meals} recordSlot={recordSlot} addMeal={addMeal} />
 
       <ul className="history-list">
         {[...history].reverse().map((record) => (
