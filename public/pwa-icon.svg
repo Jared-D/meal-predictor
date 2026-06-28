@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="96" fill="#1f6feb"/>
+  <!-- plate -->
+  <circle cx="256" cy="276" r="150" fill="#0d1117" opacity="0.25"/>
+  <circle cx="256" cy="276" r="118" fill="#f0f6fc"/>
+  <circle cx="256" cy="276" r="78" fill="#1f6feb" opacity="0.18"/>
+  <!-- fork -->
+  <g fill="#f0f6fc">
+    <rect x="92" y="96" width="14" height="120" rx="7"/>
+    <rect x="118" y="96" width="14" height="120" rx="7"/>
+    <rect x="144" y="96" width="14" height="120" rx="7"/>
+    <rect x="111" y="200" width="28" height="220" rx="14"/>
+  </g>
+  <!-- knife -->
+  <g fill="#f0f6fc">
+    <path d="M392 96c26 0 34 64 22 150-4 28-22 28-22 0z"/>
+    <rect x="378" y="220" width="28" height="200" rx="14"/>
+  </g>
+</svg>
