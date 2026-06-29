@@ -110,6 +110,19 @@ export async function getHistory() {
   return records;
 }
 
+/* --------------------------- Import/Export ------------------------- */
+
+// Replaces all meals and history with data from an export file.
+export async function importAll({ meals: importedMeals, history: importedHistory }) {
+  await saveMeals(importedMeals);
+  await historyStore.clear();
+  for (const slot of importedHistory) {
+    if (slot.date && slot.mealTime) {
+      await historyStore.setItem(slotKey(slot.date, slot.mealTime), slot);
+    }
+  }
+}
+
 /* ----------------------------- Meta ------------------------------ */
 
 export async function getMeta(key) {

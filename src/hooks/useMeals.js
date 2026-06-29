@@ -30,5 +30,11 @@ export function useMeals() {
     setMeals(updated);
   }, []);
 
-  return { meals, loading, addMeal, removeMeal };
+  const reloadMeals = useCallback(async () => {
+    const m = await storage.getMeals();
+    setMeals(m);
+    return m;
+  }, []);
+
+  return { meals, loading, addMeal, removeMeal, reloadMeals };
 }

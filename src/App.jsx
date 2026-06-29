@@ -1,24 +1,30 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useMeals } from './hooks/useMeals';
 import { useHistory } from './hooks/useHistory';
 import { usePredictor } from './hooks/usePredictor';
 import PredictPanel from './components/PredictPanel';
 import MealManager from './components/MealManager';
 import HistoryView from './components/HistoryView';
+import AppSettings from './components/AppSettings';
 
 const TABS = [
   { id: 'predict', label: 'Predict' },
   { id: 'history', label: 'History' },
   { id: 'meals', label: 'Meals' },
+  { id: 'settings', label: 'Settings' },
 ];
 
 export default function App() {
   const [tab, setTab] = useState('predict');
-  const { meals, loading: mealsLoading, addMeal, removeMeal } = useMeals();
-  const { history, loading: historyLoading, recordSlot, recordMany, deleteSlot } = useHistory();
+  const { meals, loading: mealsLoading, addMeal, removeMeal, reloadMeals } = useMeals();
+  const { history, loading: historyLoading, recordSlot, recordMany, deleteSlot, refresh: reloadHistory } = useHistory();
   const predictor = usePredictor(meals);
 
   const loading = mealsLoading || historyLoading;
+
+  const handleImportDone = useCallback(async () => {
+    await Promise.all([reloadMeals(), reloadHistory()]);
+  }, [reloadMeals, reloadHistory]);
 
   return (
     <div className="app">
@@ -58,6 +64,9 @@ export default function App() {
             )}
             {tab === 'meals' && (
               <MealManager meals={meals} addMeal={addMeal} removeMeal={removeMeal} />
+            )}
+            {tab === 'settings' && (
+              <AppSettings meals={meals} history={history} onImportDone={handleImportDone} />
             )}
           </>
         )}
