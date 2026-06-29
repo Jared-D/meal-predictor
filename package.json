@@ -1,7 +1,7 @@
 {
   "name": "meal-predictor",
   "private": true,
-  "version": "1.0.0",
+  "version": "0.0.1",
   "type": "module",
   "description": "A Progressive Web App that predicts your next meal using TensorFlow.js",
   "license": "MPL-2.0",
