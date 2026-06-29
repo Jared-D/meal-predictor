@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 // Secondary UI for adding / removing meals from the database.
-export default function MealManager({ meals, addMeal, removeMeal }) {
+export default function MealManager({ meals, addMeal, removeMeal, onBack }) {
   const [name, setName] = useState('');
   const [message, setMessage] = useState(null);
 
@@ -20,6 +20,11 @@ export default function MealManager({ meals, addMeal, removeMeal }) {
 
   return (
     <section className="panel">
+      {onBack && (
+        <button type="button" className="btn btn--ghost btn--small back-btn" onClick={onBack}>
+          ← Settings
+        </button>
+      )}
       <div className="panel-head">
         <h1>Manage meals</h1>
         <p className="muted">{meals.length} meals in your database</p>

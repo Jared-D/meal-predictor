@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import * as storage from '../db/storage';
 
-export default function AppSettings({ meals, history, onImportDone }) {
+export default function AppSettings({ meals, history, onImportDone, onManageMeals }) {
   const [status, setStatus] = useState(null);
   const fileRef = useRef();
 
@@ -49,6 +49,22 @@ export default function AppSettings({ meals, history, onImportDone }) {
         <h1>Settings</h1>
         <p className="muted">Manage your app data</p>
       </div>
+
+      <section className="settings-section">
+        <h2 className="settings-section-title">Meals</h2>
+
+        <div className="settings-row">
+          <div className="settings-row-text">
+            <div className="settings-row-label">Manage meals</div>
+            <div className="settings-row-desc">
+              Add or remove meal choices from your database.
+            </div>
+          </div>
+          <button type="button" className="btn btn--ghost btn--small" onClick={onManageMeals}>
+            Open
+          </button>
+        </div>
+      </section>
 
       <section className="settings-section">
         <h2 className="settings-section-title">Data</h2>

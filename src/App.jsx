@@ -10,7 +10,6 @@ import AppSettings from './components/AppSettings';
 const TABS = [
   { id: 'predict', label: 'Predict' },
   { id: 'history', label: 'History' },
-  { id: 'meals', label: 'Meals' },
   { id: 'settings', label: 'Settings' },
 ];
 
@@ -63,10 +62,20 @@ export default function App() {
               />
             )}
             {tab === 'meals' && (
-              <MealManager meals={meals} addMeal={addMeal} removeMeal={removeMeal} />
+              <MealManager
+                meals={meals}
+                addMeal={addMeal}
+                removeMeal={removeMeal}
+                onBack={() => setTab('settings')}
+              />
             )}
             {tab === 'settings' && (
-              <AppSettings meals={meals} history={history} onImportDone={handleImportDone} />
+              <AppSettings
+                meals={meals}
+                history={history}
+                onImportDone={handleImportDone}
+                onManageMeals={() => setTab('meals')}
+              />
             )}
           </>
         )}

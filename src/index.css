@@ -539,6 +539,11 @@ input[type='date']:focus {
   box-shadow: inset 0 2px 0 var(--primary-hover);
 }
 
+/* ----------------------------- Back btn --------------------------- */
+.back-btn {
+  margin-bottom: 14px;
+}
+
 /* --------------------------- Settings ----------------------------- */
 .settings-section {
   margin-top: 20px;
